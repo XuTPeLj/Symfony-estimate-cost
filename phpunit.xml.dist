@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <env name="APP_ENV" value="test" />
+        <env name="APP_SECRET" value="test-secret" />
+        <env name="SYMFONY_DEPRECATIONS_HELPER" value="disabled" />
+        <env name="DATABASE_URL" value="mysql://symfony_user:symfony_password@mysql:3306/symfony_shop_test?serverVersion=8.0" />
+        <env name="KERNEL_CLASS" value="App\Kernel" />
+    </php>
+</phpunit>
