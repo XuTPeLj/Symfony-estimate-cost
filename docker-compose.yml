@@ -31,8 +31,6 @@ services:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_USER: symfony_user
       MYSQL_PASSWORD: symfony_password
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
