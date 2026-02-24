@@ -2,7 +2,7 @@
 ## Запуск
 
 ### Поменять если нужно
-docker-compose.yml
+docker-compose.yml  
 `nginx:` -> `ports:` -> `- "8080:80"`  
 `mysql:` -> `ports:` -> `- "3306:3306"`
 
