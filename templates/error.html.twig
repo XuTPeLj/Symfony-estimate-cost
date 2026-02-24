@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{$title}{% endblock %}
+{#{% block description %}{description}{% endblock %}#}
+
+{% block body %}
+<div class="error-container">
+    <div class="error-code">401</div>
+    <div class="error-title">{{title}}</div>
+    <div class="error-message">{{description}}</div>
+    <a href="/login" class="login-link">Перейти к авторизации</a><br>
+    <a href="/" class="home-link">Вернуться на главную</a>
+</div>
+{% endblock %}

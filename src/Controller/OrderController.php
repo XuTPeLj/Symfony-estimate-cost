@@ -9,52 +9,61 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\PropertyAccess\Exception\InvalidArgumentException;
 
 class OrderController extends AbstractController
 {
-    #[Route('/order', name: 'app_order')]
     public function index(Request $request, EntityManagerInterface $entityManager): Response
     {
-        // Проверяем авторизацию через security-bundle
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $services = $entityManager->getRepository(Service::class)->findAll();
 
-        $user = $this->getUser();
-        $order = new Order($user);
-        $order->setUser($user);
-        $order->setEmail($user->getEmail());
+        $userOrders = $entityManager->getRepository(Order::class)->findBy(
+            ['user' => $this->getUser()],
+            ['createdAt' => 'DESC']
+        );
+
+        $order = new Order();
+        $order->setUser($this->getUser());
+        $order->setEmail($this->getUser()->getEmail()); // Устанавливаем email пользователя
 
         $form = $this->createForm(OrderType::class, $order, [
             'services' => $services
         ]);
 
-        $form->handleRequest($request);
+        $errors = [];
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $order->setCreatedAt(new \DateTime());
+        try {
+            $form->handleRequest($request);
+        } catch (\Throwable $exception) {
+            $errors = [(object)['message' => $exception->getMessage()]];
+        }
 
-            $entityManager->persist($order);
-            $entityManager->flush();
+        if ($form->isSubmitted()) {
+            if ($form->isValid()) {
+                $order->setCreatedAt(new \DateTime());
 
-            $this->addFlash('success', 'Заказ успешно создан!');
+                $entityManager->persist($order);
+                $entityManager->flush();
 
-            return $this->redirectToRoute('app_order');
+                $this->addFlash('success', 'Заказ успешно создан!');
+
+                return $this->redirectToRoute('app_order');
+            } else {
+                $errors = $form->getErrors(true);
+            }
         }
 
         return $this->render('order/index.html.twig', [
             'form' => $form->createView(),
             'services' => $services,
-            'errors' => $form->getErrors(true)
-        ]);
-    }
-
-    #[Route('/api/service-price/{id}', name: 'api_service_price', methods: ['GET'])]
-    public function getServicePrice(Service $service): Response
-    {
-        return $this->json([
-            'price' => $service->getPrice()
-        ]);
+            'userOrders' => $userOrders,
+            'errors' => $errors
+        ])->setStatusCode(
+            $form->isSubmitted() && !$form->isValid()
+                ? Response::HTTP_BAD_REQUEST
+                : Response::HTTP_OK
+        );
     }
 }

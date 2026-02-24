@@ -1,75 +1,107 @@
-{# app/templates/order/index.html.twig #}
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Создание заказа</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="email"], select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #218838; }
-        .price-info { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; font-size: 18px; }
-        .error { color: #dc3545; font-size: 14px; margin-top: 5px; }
-        .alert-success { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
-        .logout { float: right; background: #dc3545; padding: 5px 10px; font-size: 14px; }
-        .logout:hover { background: #c82333; }
-        .user-info { margin-bottom: 20px; padding: 10px; background: #e9ecef; border-radius: 4px; }
-    </style>
-</head>
-<body>
-<div class="user-info">
-    <strong>Пользователь:</strong> {{ app.user.email }}
-    <a href="{{ path('app_logout') }}" class="logout" style="color: white; text-decoration: none;">Выйти</a>
-</div>
+{% extends 'base.html.twig' %}
 
-<h1>Создание заказа на оценку</h1>
+{% set title = 'Заказы' %}
+{% set description = '' %}
 
-{% for message in app.flashes('success') %}
-    <div class="alert-success">{{ message }}</div>
-{% endfor %}
-
-{% if errors|length > 0 %}
-    <div class="error">
-        <strong>Ошибки в форме:</strong>
-        <ul>
-            {% for error in errors %}
-                <li>{{ error.message }}</li>
-            {% endfor %}
-        </ul>
+{% block body %}
+<div class="container">
+    <div class="user-info">
+        <div>
+            <strong>Пользователь:</strong> {{ app.user.email }}
+        </div>
+        <a href="{{ path('app_logout') }}" class="logout">Выйти</a>
     </div>
-{% endif %}
 
-{{ form_start(form, {'attr': {'id': 'order-form'}}) }}
-<div class="form-group">
-    {{ form_label(form.email) }}
-    {{ form_widget(form.email) }}
-    {{ form_errors(form.email) }}
-</div>
+    <div class="form-section">
+        <h2>Создание нового заказа</h2>
 
-<div class="form-group">
-    {{ form_label(form.service) }}
-    {{ form_widget(form.service, {'attr': {'id': 'service-select'}}) }}
-    {{ form_errors(form.service) }}
-</div>
+        {% for message in app.flashes('success') %}
+            <div class="alert-success">{{ message }}</div>
+        {% endfor %}
 
-<div id="price-info" class="price-info">
-    Стоимость услуги: <span id="price-value">-</span> руб.
-</div>
+        {% if errors|length > 0 %}
+            <div class="error">
+                <strong>Ошибки в форме:</strong>
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error.message }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
 
-<div class="form-group">
-    {{ form_widget(form.submit) }}
-</div>
-{{ form_end(form) }}
+        {{ form_start(form) }}
+        <div class="form-group">
+            {{ form_label(form.email) }}
+            {{ form_widget(form.email) }}
+            {% if form.email.vars.errors|length > 0 %}
+                <div class="error">
+                    {% for error in form.email.vars.errors %}
+                        <div>{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.service) }}
+            {{ form_widget(form.service) }}
+            {% if form.service.vars.errors|length > 0 %}
+                <div class="error">
+                    {% for error in form.service.vars.errors %}
+                        <div>{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div id="price-info" class="price-info form-group">
+            Стоимость услуги: <span id="price-value">-</span> руб.
+        </div>
+
+        <div class="form-group">
+            {{ form_widget(form.submit) }}
+        </div>
+        {{ form_end(form) }}
+    </div>
+
+    {# СЕКЦИЯ СО СПИСКОМ ЗАКАЗОВ #}
+    <div class="orders-section">
+        <h2>Мои заказы</h2>
+
+        {% if userOrders|length > 0 %}
+            <div class="orders-list">
+                {% for order in userOrders %}
+                    <div class="order-item">
+                        <div class="order-info">
+                            <div class="order-service">
+                                {{ order.service.name }}
+                            </div>
+                            <div class="order-email">
+                                Email: {{ order.email }}
+                            </div>
+                            <div class="order-date">
+                                Дата: {{ order.createdAt|date('d.m.Y H:i') }}
+                            </div>
+                        </div>
+                        <div class="order-price">
+                            {{ order.service.price|number_format(0, '.', ' ') }} руб.
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-orders">
+                У вас пока нет заказов. Создайте первый заказ выше!
+            </div>
+        {% endif %}
+    </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const serviceSelect = document.getElementById('service-select');
+        const serviceSelect = document.getElementById('order_service');
         const priceSpan = document.getElementById('price-value');
 
-        // Создаем объект с ценами услуг на основе данных из PHP
         const servicePrices = {
         {% for service in services %}
         {{ service.id }}: {{ service.price }},
@@ -86,10 +118,8 @@
         }
 
         serviceSelect.addEventListener('change', updatePrice);
-
-        // Вызываем при загрузке, если уже выбрана услуга
-        updatePrice();
+        updatePrice(); // Вызываем при загрузке
     });
 </script>
-</body>
-</html>
+</div>
+{% endblock %}

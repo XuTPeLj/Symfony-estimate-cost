@@ -1,5 +1,5 @@
 <?php
-// app/tests/Controller/OrderControllerTest.php
+// tests/Controller/OrderControllerTest.php
 
 namespace App\Tests\Controller;
 
@@ -7,45 +7,43 @@ use App\Entity\User;
 use App\Entity\Service;
 use App\Entity\Order;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class OrderControllerTest extends WebTestCase
 {
-    private $client;
-    private $entityManager;
-    private $passwordHasher;
+    private ?KernelBrowser $client = null;
+    private ?EntityManagerInterface $entityManager = null;
+    private ?UserPasswordHasherInterface $passwordHasher = null;
 
     protected function setUp(): void
     {
+        parent::setUp();
+
         $this->client = static::createClient();
+
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $this->passwordHasher = static::getContainer()->get(UserPasswordHasherInterface::class);
 
-        // Очищаем заказы перед каждым тестом
         $this->entityManager->createQuery('DELETE FROM App\Entity\Order')->execute();
+        $this->entityManager->createQuery('DELETE FROM App\Entity\User')->execute();
     }
 
     public function testAccessWithoutAuthentication(): void
     {
         $this->client->request('GET', '/order');
-
-        // Должно перенаправить на страницу логина
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseStatusCodeSame(401);
     }
 
     public function testAuthenticatedUserCanAccessOrderForm(): void
     {
-        // Создаем тестового пользователя
         $user = $this->createTestUser();
 
-        // Логинимся
         $this->client->loginUser($user);
 
-        // Переходим на страницу заказа
         $crawler = $this->client->request('GET', '/order');
 
-        // Проверяем, что страница доступна
         $this->assertResponseIsSuccessful();
 
         // Проверяем наличие всех полей
@@ -59,11 +57,9 @@ class OrderControllerTest extends WebTestCase
 
     public function testSubmitOrderWithInvalidData(): void
     {
-        // Создаем тестового пользователя и логинимся
         $user = $this->createTestUser();
         $this->client->loginUser($user);
 
-        // Отправляем форму с пустыми данными
         $this->client->request('POST', '/order', [
             'order' => [
                 'email' => '',
@@ -71,42 +67,38 @@ class OrderControllerTest extends WebTestCase
             ]
         ]);
 
-        // Проверяем, что форма не прошла валидацию
-        $this->assertResponseIsSuccessful(); // Страница не перенаправляет
+        $this->assertResponseStatusCodeSame(400);
 
-        // Проверяем наличие ошибок
         $this->assertSelectorExists('.error');
 
-        // Проверяем конкретные сообщения об ошибках
         $content = $this->client->getResponse()->getContent();
         $this->assertStringContainsString('Пожалуйста, укажите email', $content);
         $this->assertStringContainsString('Пожалуйста, выберите услугу', $content);
     }
 
+    // Отправляем форму с валидными данными
     public function testSubmitOrderWithValidData(): void
     {
-        // Создаем тестового пользователя и логинимся
         $user = $this->createTestUser();
         $this->client->loginUser($user);
 
-        // Получаем первую услугу из БД
         $service = $this->entityManager->getRepository(Service::class)->findOneBy([]);
 
-        // Считаем количество заказов до отправки
         $initialCount = $this->entityManager->getRepository(Order::class)->count([]);
 
-        // Отправляем форму с валидными данными
+        $crawler = $this->client->request('GET', '/order');
+        $token = $crawler->filter('input[name="order[_token]"]')->attr('value');
+
         $this->client->request('POST', '/order', [
             'order' => [
                 'email' => 'test@example.com',
-                'service' => $service->getId()
+                'service' => $service->getId(),
+                '_token' => $token
             ]
         ]);
 
-        // Проверяем, что произошло перенаправление (успешное сохранение)
         $this->assertResponseRedirects('/order');
 
-        // Следуем за редиректом
         $this->client->followRedirect();
 
         // Проверяем наличие flash-сообщения
@@ -123,16 +115,14 @@ class OrderControllerTest extends WebTestCase
         $this->assertEquals($user->getId(), $lastOrder->getUser()->getId());
     }
 
+    // Создаем тестового пользователя и логинимся
     public function testSubmitOrderWithInvalidEmail(): void
     {
-        // Создаем тестового пользователя и логинимся
         $user = $this->createTestUser();
         $this->client->loginUser($user);
 
-        // Получаем первую услугу из БД
         $service = $this->entityManager->getRepository(Service::class)->findOneBy([]);
 
-        // Отправляем форму с некорректным email
         $this->client->request('POST', '/order', [
             'order' => [
                 'email' => 'not-an-email',
@@ -140,10 +130,8 @@ class OrderControllerTest extends WebTestCase
             ]
         ]);
 
-        // Проверяем, что форма не прошла валидацию
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(400);
 
-        // Проверяем наличие ошибки email
         $content = $this->client->getResponse()->getContent();
         $this->assertStringContainsString('Пожалуйста, укажите корректный email', $content);
     }
@@ -151,7 +139,8 @@ class OrderControllerTest extends WebTestCase
     private function createTestUser(): User
     {
         $user = new User();
-        $user->setEmail('testuser_' . uniqid() . '@example.com');
+        $email = 'testuser_' . uniqid() . '@example.com';
+        $user->setEmail($email);
         $user->setPassword($this->passwordHasher->hashPassword($user, 'test123'));
         $user->setRoles(['ROLE_USER']);
 
@@ -163,12 +152,13 @@ class OrderControllerTest extends WebTestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
-
-        // Закрываем соединение с БД
         if ($this->entityManager) {
+            $this->entityManager->createQuery('DELETE FROM App\Entity\Order')->execute();
+
             $this->entityManager->close();
             $this->entityManager = null;
         }
+
+        parent::tearDown();
     }
 }

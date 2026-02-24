@@ -2,7 +2,8 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
+        <title>{{title}}</title>
+        <meta name="description" content="{{ description }}">
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text></svg>">
         {# Run `composer require symfony/webpack-encore-bundle` to start using Symfony UX #}
         {% block stylesheets %}
@@ -12,14 +13,68 @@
         {% block javascripts %}
             {{ encore_entry_script_tags('app') }}
         {% endblock %}
+
         <style>
             body {
                 font-family: Arial, sans-serif;
-                max-width: 800px;
-                margin: 50px auto;
-                padding: 20px;
                 background: #f5f5f5;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
             }
+            .error-container {
+                max-width: 500px;
+                background: white;
+                padding: 40px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            .error-code {
+                font-size: 72px;
+                font-weight: bold;
+                color: #dc3545;
+                margin: 0 0 20px 0;
+                line-height: 1;
+            }
+            .error-title {
+                font-size: 24px;
+                color: #333;
+                margin-bottom: 15px;
+            }
+            .error-message {
+                font-size: 16px;
+                color: #666;
+                margin-bottom: 30px;
+                line-height: 1.5;
+            }
+            .login-link {
+                display: inline-block;
+                background: #007bff;
+                color: white;
+                text-decoration: none;
+                padding: 12px 30px;
+                border-radius: 5px;
+                font-size: 16px;
+                transition: background 0.3s;
+            }
+            .login-link:hover {
+                background: #0056b3;
+            }
+            .home-link {
+                display: inline-block;
+                margin-top: 15px;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 14px;
+            }
+            .home-link:hover {
+                color: #495057;
+            }
+
             .container {
                 background: white;
                 padding: 20px;
@@ -169,6 +224,17 @@
             h3 {
                 color: #555;
                 margin-bottom: 15px;
+            }
+
+            .alert-danger {
+                padding: 15px 20px;
+                margin-bottom: 20px;
+                border: 1px solid #f5c6cb;
+                border-radius: 4px;
+                background-color: #f8d7da;
+                color: #721c24;
+                font-size: 14px;
+                line-height: 1.5;
             }
         </style>
     </head>
